@@ -15,6 +15,7 @@ Code:
 })
 ```
 ## APIs
+
 `amtContext`:
  * `amtTerminateSystem`: `(errorCode: amtErrorCode) => true | -0x21400000` - Crashes the system, returns true if the system has crashed or `ACCESS_DENIED` (-0x21400000) if you're not root.
  * `amtGetUID`: `() => null | number` - Gets your user ID (most likely 0)
@@ -33,6 +34,7 @@ Code:
  * `buildConfig`: `Record<string, any>` - Build configuration, also not important for most apps
  * `amtErrorDictionary`: `Record<amtErrorCode, string>` - [Error code dictionary](#error-codes), translates error codes to human-readable strings
  * `amtErrorCode` - Error code (number)
+
 `amtWindowStyle`:
  * `closeBtn`: `boolean` - Display cloe button?
  * `maxBtn`: `boolean` - Display maximize button?
