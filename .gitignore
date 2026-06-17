@@ -1,5 +1,10 @@
+# don't screw up others' projects
 temp
 initramfs
+
+# npm shit
 package-lock.json
 node_modules
+
+# we don't want to publish builds
 dist

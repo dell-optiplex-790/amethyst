@@ -6,6 +6,6 @@
     "webpack-cli": "^6.0.1"
   },
   "scripts": {
-    "build": "npx tsc && node initramfs.js && webpack"
+    "build": "npx tsc && node initramfs.js && npx webpack"
   }
 }
