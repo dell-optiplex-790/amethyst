@@ -268,7 +268,6 @@ export function gui_init(tHandle: TerminalHandle) {
     if(config.kdbg) {
         console.log('[kdbg] init gui');
         log(tHandle, 'init gui');
-        console.log('[kdbg] tHandle = %o', tHandle);
     }
     guiEl.style.width = '100vw';
     guiEl.style.height = '100vh';

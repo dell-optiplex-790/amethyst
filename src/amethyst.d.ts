@@ -8,7 +8,6 @@ declare global {
          * WARNING: Users do not want their system to crash, and if one occurs, the user will lose unsaved work.
          */
         amtTerminateSystem: (errorCode: amtErrorCode) => true | -0x21400000;
-        amtTrue: () => true;
         amtGetUID: () => null | number;
         readFile: (path: string) => Promise<amtErrorCode | Blob>;
         readDir: (path: string) => Promise<amtErrorCode | string[]>;
@@ -20,10 +19,11 @@ declare global {
         setWindowContent: (hWnd: __handle<__window>, content: HTMLElement) => boolean;
         driveTypes: {
             localStorage: (mount: string) => DriveBinding;
-            ram: (mount: string, source?: Record<string, Uint8Array>) => DriveBinding;
+            ram: (mount: string) => DriveBinding;
         };
         config: Record<string, any>;
         buildConfig: Record<string, any>;
+        amtErrorDictionary: amtErrorDictionary;
     }
     
     type amtLibraryName = 'core.aml' | string;

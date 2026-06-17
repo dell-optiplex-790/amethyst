@@ -1,7 +1,8 @@
-import { _amtTerminateSystem, config } from "./index";
+import { _amtTerminateSystem, amtErrorDictionary, config } from "./index";
 import { getFlags } from "./index";
 import { driveTypes, readDir, readFile, remove, writeFile } from "./filesystem";
 import { CreateWindow, SetWindowContent, SetWindowPos, SetWindowState } from "../gui/index";
+import { restricted } from "./secure";
 
 var processes: Array<Process> = [];
 var latestPID = 0;
@@ -40,9 +41,6 @@ var keRootUser = keCreateHandle({
 export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: __handle<Process>): amtContext {
     return {
         amtTerminateSystem: _amtTerminateSystem(keUserHandle, keProcessHandle),
-        amtTrue: function() {
-            return true;
-        },
         amtGetUID: function() {
             var user = keResolveHandle(keUserHandle);
             if(!user) {
@@ -65,14 +63,15 @@ export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: _
         setWindowContent: SetWindowContent,
         driveTypes,
         config,
-        buildConfig: cfg
+        buildConfig: cfg,
+        amtErrorDictionary
     }
 }
 
-export function CreateProcess(keProcessName: string | null, keProcessFunction: (context: amtContext) => void, keUserHandle: number): number | null {
+export function CreateProcess(keProcessName: string | null, keProcessFunction: ((context: amtContext) => void) | string, keUserHandle: number): number | null {
     var config = getFlags();
     if(config.kdbg) {
-        console.log('[kdbg] try create process:\n name = %s\n func = (%s)%o\n user = %d', keProcessName, keProcessFunction.name || 'anonymous', keProcessFunction, keUserHandle)
+        console.log('[kdbg] try create process:\n name = %s\n func = (%s)%o\n user = %d', keProcessName, (typeof keProcessFunction == 'function' ? keProcessFunction.name : null) || 'anonymous', keProcessFunction, keUserHandle)
     }
     var user = keResolveHandle(keUserHandle);
     if(!user) {
@@ -86,7 +85,11 @@ export function CreateProcess(keProcessName: string | null, keProcessFunction: (
     var handle = -1 * latestHandle++;
     var ctx = CreateContext(keUserHandle, pid);
     setTimeout(async function() {
-        keProcessFunction(ctx);
+        if(typeof keProcessFunction == 'string') {
+            restricted.eval(keProcessFunction)(ctx);
+        } else {
+            keProcessFunction(ctx);
+        }
     }, 0);
     // @ts-ignore
     processes[pid] = {user, pid, valid: true, libs: {}}; 
