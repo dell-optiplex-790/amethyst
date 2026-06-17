@@ -1,4 +1,4 @@
-import { kernel_init } from "./core";
+import { kernel_init } from "./core/index";
 
 Object.defineProperty(window, 'kernel', {
     value: kernel_init,

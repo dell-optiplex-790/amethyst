@@ -1,4 +1,7 @@
 var fs = require('fs');
+if(!fs.existsSync('config.json')) {
+    fs.copyFileSync('defaults.json', 'config.json');
+}
 var files = fs.readdirSync('initramfs', {recursive: true, withFileTypes: true}).filter(e => e.isFile()).map(e => e.name);
 var rfs = {};
 function Uint8Str(uint8) {

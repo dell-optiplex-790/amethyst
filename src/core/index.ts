@@ -127,7 +127,7 @@ export function kernel_init(cmdLine: string) {
                 console.log('[kdbg] done, running init...');
                 log(tHandle, 'done, running init...');
             }
-            var file = await readFile('/ramfs/init.js');
+            var file = await readFile('/ramfs/' + ctx.buildConfig.ramfsInitJS);
             if(typeof file == 'number') {
                 if(config.kdbg) {
                     console.log('[kdbg] oops! could not read file, terminating system...');

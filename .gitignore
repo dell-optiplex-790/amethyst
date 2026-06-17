@@ -1,6 +1,7 @@
 # don't screw up others' projects
 temp
 initramfs
+config.json
 
 # npm shit
 package-lock.json
