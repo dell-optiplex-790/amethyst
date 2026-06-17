@@ -36,7 +36,7 @@ Code:
  * `amtErrorCode` - Error code (number)
 
 `amtWindowStyle`:
- * `closeBtn`: `boolean` - Display cloe button?
+ * `closeBtn`: `boolean` - Display close button?
  * `maxBtn`: `boolean` - Display maximize button?
  * `caption`: `boolean` - Show titlebar?
  * `resizable`: `boolean` - Is window resizable?
