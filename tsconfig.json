@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"target":"es2016","lib":["ES2016","DOM"],"outDir":"temp","rootDir":"./src"}}

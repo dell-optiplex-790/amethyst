@@ -1,0 +1,1 @@
+export const ramfs: Record<string, string> = {};
