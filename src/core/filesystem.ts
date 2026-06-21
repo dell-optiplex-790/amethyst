@@ -1,4 +1,4 @@
-import { getFlags } from "./index";
+import { getFlags, getStatus } from "./index";
 import { restricted } from "./secure";
 import { Uint8, Uint8Str } from "./utils";
 
@@ -84,6 +84,10 @@ function getDrivePath(path: string) {
 }
 
 export async function readFile(path: string): Promise<amtErrorCode | Blob> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var config = getFlags();
     if(config.kdbg) {
         console.log('[kdbg] read file: %s', path);
@@ -100,6 +104,10 @@ export async function readFile(path: string): Promise<amtErrorCode | Blob> {
 }
 
 export async function writeFile(path: string, content: Blob): Promise<amtErrorCode> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var config = getFlags();
     if(config.kdbg) {
         console.log('[kdbg] write file: %s', path);
@@ -112,6 +120,10 @@ export async function writeFile(path: string, content: Blob): Promise<amtErrorCo
 }
 
 export async function readDir(path: string): Promise<amtErrorCode | string[]> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var config = getFlags();
     if(config.kdbg) {
         console.log('[kdbg] read dir: %s', path);
@@ -127,6 +139,10 @@ export async function readDir(path: string): Promise<amtErrorCode | string[]> {
 }
 
 export async function remove(path: string): Promise<amtErrorCode> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var config = getFlags();
     if(config.kdbg) {
         console.log('[kdbg] delete file: %s', path);

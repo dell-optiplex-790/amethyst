@@ -17,6 +17,7 @@ declare global {
         setWindowPos: (hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) => boolean;
         setWindowState: (hWnd: __handle<__window>, state: amtWindowState) => boolean;
         setWindowContent: (hWnd: __handle<__window>, content: HTMLElement) => boolean;
+        setWindowProc: (hWnd: __handle<__window>, proc: amtWindowEventCB) => boolean;
         driveTypes: {
             localStorage: (mount: string) => DriveBinding;
             ram: (mount: string) => DriveBinding;
@@ -24,6 +25,10 @@ declare global {
         config: Record<string, any>;
         buildConfig: Record<string, any>;
         amtErrorDictionary: amtErrorDictionary;
+        createProcess: (name: string | null, keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) => number | null;
+        terminateProcess: (pid: number) => amtErrorCode;
+        hProcess: number;
+        getBinarySection: (name: string) => null | Uint8Array;
     }
     
     type amtLibraryName = 'core.aml' | string;
@@ -47,6 +52,18 @@ declare global {
         resizable: boolean;
     }
 
-    type amtWindowState = "normal" | "maximized" | "closed" | "hidden"
+    interface amtWindowEvent {
+        hWnd: __handle<__window>;
+        w: number;
+        h: number;
+        state: amtWindowState;
+        x: number;
+        y: number;
+        event: amtWindowEventType;
+    }
+
+    type amtWindowState = "normal" | "maximized" | "closed" | "hidden";
+    type amtWindowEventType = "close" | "move";
+    type amtWindowEventCB = (evt: amtWindowEvent) => Promise<void>;
 
 }export {};

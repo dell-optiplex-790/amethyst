@@ -1,10 +1,15 @@
-import { getFlags, log } from "../core/index";
+import { getFlags, getStatus, handleCrash, log } from "../core/index";
 import { keCreateHandle, keFreeHandle, keResolveHandle } from "../core/process";
+import { Sentinel } from "../core/sentinel";
 import { TerminalHandle } from "../textmode/types";
 
 const guiEl = document.createElement('div');
 
 export function SetWindowPos(hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var window: __window | null = keResolveHandle(hWnd);
     if(!window) {
         return false;
@@ -17,15 +22,38 @@ export function SetWindowPos(hWnd: __handle<__window>, width: number | null, hei
     window.mxh = maxHeight || window.mxh;
     window.mnw = minWidth || window.mnw;
     window.mnh = minHeight || window.mnh;
+    window.wndproc({
+        event: 'move',
+        hWnd,
+        x: window.x,
+        y: window.y,
+        w: window.w,
+        h: window.h,
+        state: window.state
+    });
     return UpdateWindow(window, hWnd);
 }
 
 export function SetWindowState(hWnd: __handle<__window>, state: amtWindowState) {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var window: __window | null = keResolveHandle(hWnd);
     if(!window) {
         return false;
     }
     if(state == "closed") {
+        clearInterval(window.interval); // optimization
+        window.wndproc({
+            event: 'close',
+            hWnd,
+            x: window.x,
+            y: window.y,
+            w: window.w,
+            h: window.h,
+            state: window.state
+        });
         window.el.remove();
         keFreeHandle(hWnd);
         return true;
@@ -115,7 +143,29 @@ function UpdateWindow(window: __window, hWnd: __handle<__window>, updated?: bool
     return true;
 }
 
+export function SetWindowProc(hWnd: __handle<__window>, proc: amtWindowEventCB): boolean {
+    var window: __window | null = keResolveHandle(hWnd);
+    if(!window) {
+        return false;
+    }
+    window.wndproc = proc;
+    window.wndproc({
+        event: 'move',
+        hWnd,
+        x: window.x,
+        y: window.y,
+        w: window.w,
+        h: window.h,
+        state: window.state
+    });
+    return true;
+}
+
 export function CreateWindow(title: string, width: number, height: number, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null, style: amtWindowStyle | null): __handle<__window> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var config = getFlags();
     if(style == null) {
         style = {
@@ -181,7 +231,22 @@ export function CreateWindow(title: string, width: number, height: number, x: nu
         titleEl: t,
         titleCaptionEl: tc,
         windowContentEl: wc,
-        style
+        style,
+        interval: <number><unknown>setInterval(() => {
+            wnd.w = parseInt(w.style.width);
+            wnd.h = parseInt(w.style.height);
+            wnd.wndproc({
+                hWnd,
+                x: wnd.x,
+                y: wnd.y,
+                w: wnd.w,
+                h: wnd.h,
+                state: wnd.state,
+                event: 'move'
+            });
+            UpdateWindow(wnd, hWnd, false, false);
+        }, 10),
+        wndproc: async () => {}
     };
 
     let relativeDragPos = [0, 0];
@@ -217,12 +282,6 @@ export function CreateWindow(title: string, width: number, height: number, x: nu
         }, 500);
     })
 
-    setInterval(() => {
-        wnd.w = parseInt(w.style.width);
-        wnd.h = parseInt(w.style.height);
-        UpdateWindow(wnd, hWnd, false, false);
-    }, 10);
-
     document.addEventListener('mousemove', function(e) {
         if(!moveWnd && wnd.state != 'maximized') {
             return;
@@ -239,6 +298,10 @@ export function CreateWindow(title: string, width: number, height: number, x: nu
 }
 
 export function SetWindowContent(hWnd: __handle<__window>, content: HTMLElement) {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
     var window: __window | null = keResolveHandle(hWnd);
     if(!window) {
         return false;
@@ -276,8 +339,13 @@ export function gui_init(tHandle: TerminalHandle) {
     guiEl.style.top = '0';
     guiEl.style.left = '0';
     guiEl.style.background = '#4a4a4a';
+    Sentinel.register(guiEl);
     document.body.appendChild(guiEl);
     toggleGUI(true, tHandle);
+    handleCrash(function() {
+        toggleGUI(false, tHandle);
+        guiEl.remove();
+    });
     if(config.kdbg) {
         log(tHandle, 'gui init finished');
         console.log('[kdbg] gui init finished');

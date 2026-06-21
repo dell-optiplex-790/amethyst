@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@types/node": "^25.9.3",
     "ts-loader": "^9.5.4",
     "typescript": "^6.0.3",
     "webpack": "^5.104.0",

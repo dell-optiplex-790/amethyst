@@ -19,6 +19,9 @@ module.exports={entry:'./temp/index.js',mode:'production',target:['web','es2016'
     })
 ]}, plugins: [
     new webpack.DefinePlugin({
-        cfg: JSON.stringify(JSON.parse(fs.readFileSync('config.json', 'utf8')))
+        cfg: JSON.stringify({
+            ...JSON.parse(fs.readFileSync('config.json', 'utf8')),
+            os_build: parseInt(fs.readFileSync('.osbuild', 'utf8'))
+        }),
     })
 ]};

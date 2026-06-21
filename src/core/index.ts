@@ -6,12 +6,26 @@ import { gui_init } from "../gui/index";
 import { ramfs } from "../ramfs";
 import { bindings, driveTypes, readDir, readFile, writeFile } from "./filesystem";
 import { Uint8 } from "./utils";
+import { Sentinel } from "./sentinel";
 
 restricted.document.documentElement.innerHTML = '';
 const { tHandle: tID } = init(document.body);
+var tty = getTTY(tID);
+if(!tty) {
+    throw new Error('TTY not found!');
+}
+Sentinel.register(tty.internal.handle);
 export let config: Record<string, any> = {};
 var date = 0;
 
+var status: {running: boolean, error: amtErrorCode | null} = {
+    running: false,
+    error: null
+};
+
+export function getStatus() {
+    return status;
+}
 
 export const amtErrorDictionary: amtErrorDictionary = {
     [-0x21000000]: 'GENERAL_SYSTEM_FAULT',
@@ -24,6 +38,8 @@ export const amtErrorDictionary: amtErrorDictionary = {
     [-0x10000000]: 'SUCCESS'
 }
 
+var crashCBs: Array<(error: amtErrorCode) => void> = [];
+
 export function _amtTerminateSystem(keUserIdentifier: number, keProcessHandle: number) {
     return function amtTerminateSystem(errorCode: amtErrorCode) {
         const tHandle = getTTY(tID);
@@ -33,6 +49,11 @@ export function _amtTerminateSystem(keUserIdentifier: number, keProcessHandle: n
         }
         if(keUserIdentifier != 0) {
             return -0x21400000;
+        }
+        status.running = false;
+        status.error = errorCode;
+        for(var i = 0; i < crashCBs.length; i++) {
+            crashCBs[i](errorCode);
         }
         tHandle.write(`*** STOP 0x${(errorCode * -1).toString(16)} (${amtErrorDictionary[errorCode]})
 The system has encountered a problem and needs to restart.
@@ -48,8 +69,21 @@ Running processes:\n\n`);
         for(let i = 0; i < handles.length; i++) {
             keFreeHandle(handles[i]);
         }
+        if(config.nofailexit) {
+            return true;
+        }
+        setTimeout(function() {
+            if(typeof location == 'object' && typeof location.reload == 'function') {
+                return location.reload();
+            }
+            tHandle.write('System should have restarted.');
+        }, Number(config.failexitms) || 2000);
         return true;
     }
+}
+
+export function handleCrash(cb: (error: amtErrorCode) => void) {
+    crashCBs.push(cb);
 }
 
 export function getFlags(): Record<string, any> {
@@ -64,6 +98,7 @@ export function log(tHandle: TerminalHandle | null, msg: string) {
 }
 
 export function kernel_init(cmdLine: string) {
+    status.running = true;
     date = Date.now();
     var split = cmdLine.split(' '), tmp: {value: any} = {value: ''};
     for(var i = 0; i < split.length; i++) {
@@ -100,7 +135,17 @@ export function kernel_init(cmdLine: string) {
     if(config.kdbg) {
         console.log('[kdbg] bootargs =', config);
         log(tHandle, 'bootargs = ' + JSON.stringify(config));
+        console.log('[kdbg] starting sentinel');
+        log(tHandle, 'starting sentinel');
     }
+
+    Sentinel.init().then(function() {
+        if(config.kdbg) {
+            console.log('[kdbg] sentinel started');
+            log(tHandle, 'sentinel started');
+        }
+    });
+    
 
     if(config.break) {
         if(config.kdbg) {

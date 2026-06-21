@@ -11,3 +11,4 @@ for(var i = 0; i < files.length; i++) {
     rfs[files[i]] = Uint8Str(new Uint8Array(fs.readFileSync('initramfs/' + files[i])));
 }
 fs.writeFileSync('temp/ramfs.js', 'export var ramfs = ' + JSON.stringify(rfs));
+fs.writeFileSync('.osbuild', (parseInt(fs.readFileSync('.osbuild', 'utf8')) + 1).toString(), 'utf8');

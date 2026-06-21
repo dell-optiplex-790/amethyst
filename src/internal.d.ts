@@ -32,6 +32,8 @@ declare global {
         titleCaptionEl: HTMLElement;
         style: amtWindowStyle;
         windowContentEl: HTMLElement;
+        interval: number;
+        wndproc: amtWindowEventCB;
     }
 
     interface DriveBinding {

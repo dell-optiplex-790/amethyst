@@ -1,19 +1,21 @@
 # Project Amethyst Documentation
 ## First app
 Code:
-```ts
-(function(ctx: amtContext) {
-    var hWnd = ctx.createWindow('App', 640, 400);
-    var content = document.createElement('div');
-    var h1 = document.createElement('h1');
-    h1.innerText = 'Hello, Amethyst!';
-    content.appendChild(h1);
-    var p = document.createElement('p');
-    p.innerText = 'This app is running under Project Amethyst.';
-    content.appendChild(p);
-    ctx.setWindowContent(hWnd, content);
-})
+```js
+// ctx is of the type `amtContext`
+var hWnd = ctx.createWindow('App', 640, 400);
+var content = document.createElement('div');
+var h1 = document.createElement('h1');
+h1.innerText = 'Hello, Amethyst!';
+content.appendChild(h1);
+var p = document.createElement('p');
+p.innerText = 'This app is running under Project Amethyst.';
+content.appendChild(p);
+ctx.setWindowContent(hWnd, content);
 ```
+To compile it, use `amtc --in=index.js --out=app`. Refer to [the package's documentation](https://npmjs.com/amethyst-compiler).
+Old apps should work in newer versions of Amethyst, as the executable format won't change.
+
 ## APIs
 
 `amtContext`:
@@ -34,6 +36,10 @@ Code:
  * `buildConfig`: `Record<string, any>` - Build configuration, also not important for most apps
  * `amtErrorDictionary`: `Record<amtErrorCode, string>` - [Error code dictionary](#error-codes), translates error codes to human-readable strings
  * `amtErrorCode` - Error code (number)
+ * `createProcess`: `(name: string | null, keProcessFunction: ((context: amtContext) => void) /* proc function */ | string /* proc function */ | Uint8Array /* binary */) => number | null` - Create process
+ * `terminateProcess`: `(pid: number) => amtErrorCode` - Terminate process
+ * `hProcess`: `number` - Your PID
+ * `getBinarySection`: `(name: string) => null | Uint8Array` - Get a section from your binary
 
 `amtWindowStyle`:
  * `closeBtn`: `boolean` - Display close button?

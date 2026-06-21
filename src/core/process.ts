@@ -1,8 +1,10 @@
 import { _amtTerminateSystem, amtErrorDictionary, config } from "./index";
 import { getFlags } from "./index";
 import { driveTypes, readDir, readFile, remove, writeFile } from "./filesystem";
-import { CreateWindow, SetWindowContent, SetWindowPos, SetWindowState } from "../gui/index";
+import { CreateWindow, SetWindowContent, SetWindowPos, SetWindowProc, SetWindowState } from "../gui/index";
 import { restricted } from "./secure";
+import { loadbin } from "./binload";
+import { stringify } from "./utils";
 
 var processes: Array<Process> = [];
 var latestPID = 0;
@@ -38,7 +40,7 @@ var keRootUser = keCreateHandle({
     uid: 0
 });
 
-export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: __handle<Process>): amtContext {
+export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: __handle<Process>, bin: Record<string, Uint8Array> | null): amtContext {
     return {
         amtTerminateSystem: _amtTerminateSystem(keUserHandle, keProcessHandle),
         amtGetUID: function() {
@@ -61,14 +63,27 @@ export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: _
         setWindowPos: SetWindowPos,
         setWindowState: SetWindowState,
         setWindowContent: SetWindowContent,
+        setWindowProc: SetWindowProc,
         driveTypes,
         config,
         buildConfig: cfg,
-        amtErrorDictionary
-    }
+        amtErrorDictionary,
+        createProcess: _CreateProcessSecure(keUserHandle),
+        terminateProcess: TerminateProcess,
+        hProcess: keProcessHandle,
+        getBinarySection: function(name: string): null | Uint8Array {
+            if(!bin) {
+                return null;
+            }
+            if(!bin[name]) {
+                return null;
+            }
+            return bin[name];
+        }
+    };
 }
 
-export function CreateProcess(keProcessName: string | null, keProcessFunction: ((context: amtContext) => void) | string, keUserHandle: number): number | null {
+export function CreateProcess(keProcessName: string | null, keProcessFunction: ((context: amtContext) => void) | string | Uint8Array, keUserHandle: number) {
     var config = getFlags();
     if(config.kdbg) {
         console.log('[kdbg] try create process:\n name = %s\n func = (%s)%o\n user = %d', keProcessName, (typeof keProcessFunction == 'function' ? keProcessFunction.name : null) || 'anonymous', keProcessFunction, keUserHandle)
@@ -83,12 +98,32 @@ export function CreateProcess(keProcessName: string | null, keProcessFunction: (
     }
     var pid = latestPID++;
     var handle = -1 * latestHandle++;
-    var ctx = CreateContext(keUserHandle, pid);
+    var ctx: amtContext;
+    var bin: Record<string, Uint8Array> | null, text: string = '';
+    if(keProcessFunction instanceof Uint8Array) {
+        bin = loadbin(keProcessFunction);
+        if(!bin) {
+            return null;
+        }
+        if(!bin.text) {
+            return null;
+        }
+        ctx = CreateContext(keUserHandle, pid, bin);
+        text = stringify(bin.text)
+    } else {
+        ctx = CreateContext(keUserHandle, pid, null);
+    }
     setTimeout(async function() {
         if(typeof keProcessFunction == 'string') {
             restricted.eval(keProcessFunction)(ctx);
-        } else {
+        } else if(typeof keProcessFunction == 'function') {
             keProcessFunction(ctx);
+        } else if(keProcessFunction instanceof Uint8Array) {
+            if(bin && text) {
+                restricted.eval(text)(ctx);
+            } else {
+                return null;
+            }
         }
     }, 0);
     // @ts-ignore
@@ -104,6 +139,20 @@ export function CreateProcess(keProcessName: string | null, keProcessFunction: (
         console.log('[kdbg] proc handle = %d', handle);
     }
     return handle;
+}
+
+export function TerminateProcess(pid: number): amtErrorCode {
+    if(!(processes[pid] && processes[pid].valid)) {
+        return -0x21600000;
+    }
+    processes[pid].valid = false;
+    return -0x10000000;
+}
+
+function _CreateProcessSecure(uHandle: number) {
+    return function CreateProc(name: string | null, keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
+        return CreateProcess(name, keProcessFunction, uHandle);
+    }
 }
 
 export function kePrivilegedGetProcesses(): {processes: Array<__handle<Process>>} {
