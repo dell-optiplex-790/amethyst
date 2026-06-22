@@ -1,6 +1,6 @@
 import { _amtTerminateSystem, amtErrorDictionary, config } from "./index";
 import { getFlags } from "./index";
-import { driveTypes, readDir, readFile, remove, writeFile } from "./filesystem";
+import { driveTypes, mkdir, readDir, readFile, remove, type, writeFile } from "./filesystem";
 import { CreateWindow, SetWindowContent, SetWindowPos, SetWindowProc, SetWindowState } from "../gui/index";
 import { restricted } from "./secure";
 import { loadbin } from "./binload";
@@ -40,8 +40,8 @@ var keRootUser = keCreateHandle({
     uid: 0
 });
 
-export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: __handle<Process>, bin: Record<string, Uint8Array> | null): amtContext {
-    return {
+export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: __handle<Process>, bin: Record<string, Uint8Array> | null, exportCtx: amtContext | null): amtContext {
+    var $ctx: amtContext = {
         amtTerminateSystem: _amtTerminateSystem(keUserHandle, keProcessHandle),
         amtGetUID: function() {
             var user = keResolveHandle(keUserHandle);
@@ -58,7 +58,9 @@ export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: _
         readFile,
         readDir,
         writeFile,
+        mkdir: mkdir,
         remove,
+        getFSType: type,
         createWindow: CreateWindow,
         setWindowPos: SetWindowPos,
         setWindowState: SetWindowState,
@@ -79,8 +81,23 @@ export function CreateContext(keUserHandle: __handle<__user>, keProcessHandle: _
                 return null;
             }
             return bin[name];
+        },
+        exportFunc: function(name: string, func: Function): boolean {
+            if(!exportCtx) {
+                return false;
+            }
+            if(typeof exportCtx[name] != 'undefined') {
+                return false;
+            }
+            exportCtx[name] = func;
+            return true;
+        },
+        loadLibrary: function(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
+            return null;
         }
     };
+    $ctx.loadLibrary = _LoadLibrary($ctx, keUserHandle, keProcessHandle);
+    return $ctx;
 }
 
 export function CreateProcess(keProcessName: string | null, keProcessFunction: ((context: amtContext) => void) | string | Uint8Array, keUserHandle: number) {
@@ -108,10 +125,10 @@ export function CreateProcess(keProcessName: string | null, keProcessFunction: (
         if(!bin.text) {
             return null;
         }
-        ctx = CreateContext(keUserHandle, pid, bin);
+        ctx = CreateContext(keUserHandle, pid, bin, null);
         text = stringify(bin.text)
     } else {
-        ctx = CreateContext(keUserHandle, pid, null);
+        ctx = CreateContext(keUserHandle, pid, null, null);
     }
     setTimeout(async function() {
         if(typeof keProcessFunction == 'string') {
@@ -139,6 +156,52 @@ export function CreateProcess(keProcessName: string | null, keProcessFunction: (
         console.log('[kdbg] proc handle = %d', handle);
     }
     return handle;
+}
+
+export function _LoadLibrary(_ctx: amtContext, keUserHandle: number, keProcessHandle: number) {
+    return function LoadLibrary(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] try load library');
+        }
+        var user = keResolveHandle(keUserHandle);
+        if(!user) {
+            return null;
+        }
+        
+        if(typeof user.uid != 'number') {
+            return null;
+        }
+        var ctx: amtContext;
+        var bin: Record<string, Uint8Array> | null, text: string = '';
+        if(keProcessFunction instanceof Uint8Array) {
+            bin = loadbin(keProcessFunction);
+            if(!bin) {
+                return null;
+            }
+            if(!bin.text) {
+                return null;
+            }
+            ctx = CreateContext(keUserHandle, keProcessHandle, bin, _ctx);
+            text = stringify(bin.text)
+        } else {
+            ctx = CreateContext(keUserHandle, keProcessHandle, null, _ctx);
+        }
+        setTimeout(async function() {
+            if(typeof keProcessFunction == 'string') {
+                restricted.eval(keProcessFunction)(ctx);
+            } else if(typeof keProcessFunction == 'function') {
+                keProcessFunction(ctx);
+            } else if(keProcessFunction instanceof Uint8Array) {
+                if(bin && text) {
+                    restricted.eval(text)(ctx);
+                } else {
+                    return null;
+                }
+            }
+        }, 0);
+        return null;
+    }
 }
 
 export function TerminateProcess(pid: number): amtErrorCode {

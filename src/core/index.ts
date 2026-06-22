@@ -114,7 +114,7 @@ export function kernel_init(cmdLine: string) {
         throw -0x21500000;
     }
     tHandle.setBackground(typeof config.bkcolor == 'string' ? config.bkcolor : '#172E63');
-    if(config.startmsg == true) {
+    if(config.startmsg == true || typeof config.startmsg == 'undefined') {
         tHandle.write('Project Amethyst v1.00\n\n');
     } else if(typeof config.startmsg == 'string' && config.startmsg != '0') {
         try {
@@ -157,7 +157,7 @@ export function kernel_init(cmdLine: string) {
 
     CreateProcess('init', async (ctx) => {
         try {
-            Object.defineProperty(window, 'ctx', { value: ctx });
+            Object.defineProperty(window, 'ctx', { value: ctx, configurable: true });
             if(config.kdbg) {
                 console.log('[kdbg] mounting initramfs');
                 log(tHandle, 'mounting initramfs');

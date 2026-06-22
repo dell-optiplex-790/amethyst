@@ -135,7 +135,7 @@ export async function readDir(path: string): Promise<amtErrorCode | string[]> {
     if(!bindings[drive]) {
         return -0x21700000;
     }
-    return await bindings[drive].readDir(getDrivePath(path));
+    return await bindings[drive].readDir(getDrivePath(path)).then(_ => _ instanceof Array ? (_.filter(itm => !itm.endsWith('/.directory'))) : _);
 }
 
 export async function remove(path: string): Promise<amtErrorCode> {
@@ -152,4 +152,47 @@ export async function remove(path: string): Promise<amtErrorCode> {
         return -0x21700000;
     }
     return await bindings[drive].remove(getDrivePath(path));
+}
+
+export async function mkdir(path: string): Promise<amtErrorCode> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
+    var config = getFlags();
+    if(config.kdbg) {
+        console.log('[kdbg] mkdir: %s', path);
+    }
+    var drive = getDrive(path);
+    if(!bindings[drive]) {
+        return -0x21700000;
+    }
+    if((await type(path)) != 'none') {
+        return -0x21400000; // you cannot overwrite a file or a directory
+    }
+    return await bindings[drive].writeFile(getDrivePath(path) + '/.directory', new Uint8Array([]));
+}
+
+export async function type(path: string): Promise<amtFilesystemType> {
+    var status = getStatus();
+    if(!status.running) {
+        throw new Error('System is not running!');
+    }
+    var config = getFlags();
+    if(config.kdbg) {
+        console.log('[kdbg] typeof: %s', path);
+    }
+    var drive = getDrive(path);
+    if(!bindings[drive]) {
+        return 'none';
+    }
+    var res = await bindings[drive].readFile(getDrivePath(path) + '/.directory');
+    var res2 = await bindings[drive].readFile(getDrivePath(path));
+    if(res instanceof Uint8Array || getDrivePath(path) == '') {
+        return 'dir';
+    }
+    if(res2 instanceof Uint8Array) {
+        return 'file';
+    }
+    return 'none';
 }

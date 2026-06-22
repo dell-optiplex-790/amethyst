@@ -12,7 +12,9 @@ declare global {
         readFile: (path: string) => Promise<amtErrorCode | Blob>;
         readDir: (path: string) => Promise<amtErrorCode | string[]>;
         writeFile: (path: string, content: Blob) => Promise<amtErrorCode>;
+        mkdir: (path: string) => Promise<amtErrorCode>;
         remove: (path: string) => Promise<amtErrorCode>;
+        getFSType: (path: string) => Promise<amtFilesystemType>;
         createWindow: (title: string, width: number, height: number, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null, style: amtWindowStyle | null) => __handle<__window>;
         setWindowPos: (hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) => boolean;
         setWindowState: (hWnd: __handle<__window>, state: amtWindowState) => boolean;
@@ -29,6 +31,8 @@ declare global {
         terminateProcess: (pid: number) => amtErrorCode;
         hProcess: number;
         getBinarySection: (name: string) => null | Uint8Array;
+        exportFunc: (name: string, func: Function) => boolean;
+        loadLibrary: (keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) => null;
     }
     
     type amtLibraryName = 'core.aml' | string;
@@ -65,5 +69,6 @@ declare global {
     type amtWindowState = "normal" | "maximized" | "closed" | "hidden";
     type amtWindowEventType = "close" | "move";
     type amtWindowEventCB = (evt: amtWindowEvent) => Promise<void>;
+    type amtFilesystemType = "none" | "dir" | "file";
 
 }export {};
