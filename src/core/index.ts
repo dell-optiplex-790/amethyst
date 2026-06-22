@@ -113,7 +113,7 @@ export function kernel_init(cmdLine: string) {
         // fallback
         throw -0x21500000;
     }
-    tHandle.setBackground(typeof config.bkcolor == 'string' ? config.bkcolor : '#172E63');
+    tHandle.setBackground(typeof config.bkcolor == 'string' ? config.bkcolor : '#171A4B' /* modern: '#172E63' */ );
     if(config.startmsg == true || typeof config.startmsg == 'undefined') {
         tHandle.write('Project Amethyst v1.00\n\n');
     } else if(typeof config.startmsg == 'string' && config.startmsg != '0') {
