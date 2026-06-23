@@ -4,6 +4,7 @@ import { Sentinel } from "../core/sentinel";
 import { TerminalHandle } from "../textmode/types";
 
 const guiEl = document.createElement('div');
+let wnds: Array<__window> = [], highestZIndex = 0;
 
 export function SetWindowPos(hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) {
     var status = getStatus();
@@ -55,6 +56,7 @@ export function SetWindowState(hWnd: __handle<__window>, state: amtWindowState) 
             state: window.state
         });
         window.el.remove();
+        wnds.splice(wnds.indexOf(window), 1);
         keFreeHandle(hWnd);
         return true;
     }
@@ -82,6 +84,11 @@ function UpdateWindow(window: __window, hWnd: __handle<__window>, updated?: bool
     CorrectWindowSize(window);
     window.el.style.display = window.state == 'hidden' ? 'none' : '';
     window.titleEl.style.cursor = window.state == 'maximized' ? '' : 'move';
+    if(window.active) {
+        window.titleEl.style.background = '#00007f';
+    } else {
+        window.titleEl.style.background = '#7f7f7f';
+    }
     if(redrawTitle) {
         window.titleCaptionEl.innerText = window.title;
         var captionBtnContainer = document.createElement('span');
@@ -125,10 +132,10 @@ function UpdateWindow(window: __window, hWnd: __handle<__window>, updated?: bool
         CorrectWindowSize(window);
     }
     if(window.state == 'normal') {
-        window.el.style.width = window.w.toString();
-        window.el.style.height = window.h.toString();
-        window.el.style.top = window.y.toString();
-        window.el.style.left = window.x.toString();
+        window.el.style.width = window.w + 'px';
+        window.el.style.height = window.h + 'px';
+        window.el.style.top = window.y + 'px';
+        window.el.style.left = window.x + 'px';
         window.el.style.resize = window.style.resizable ? 'both' : 'none';
     } else if(window.state == 'maximized') {
         window.el.style.width = '100vw';
@@ -141,6 +148,24 @@ function UpdateWindow(window: __window, hWnd: __handle<__window>, updated?: bool
         UpdateWindow(window, hWnd, true, false);
     }
     return true;
+}
+
+function reorder(wnd: __window) {
+    for(var i = 0; i < wnds.length; i++) {
+        if(wnd.hWnd == wnds[i].hWnd) {
+            continue;
+        }
+        wnds[i].el.style.zIndex = (parseInt(wnd.el.style.zIndex) - 1).toString();
+        wnds[i].active = false;
+    }
+    wnd.el.style.zIndex = (parseInt(wnd.el.style.zIndex) + 1).toString();
+    wnd.active = true;
+    highestZIndex = 0;
+    for(var i = 0; i < wnds.length; i++) {
+        if(parseInt(wnds[i].el.style.zIndex) > highestZIndex) {
+            highestZIndex = parseInt(wnds[i].el.style.zIndex);
+        }
+    }
 }
 
 export function SetWindowProc(hWnd: __handle<__window>, proc: amtWindowEventCB): boolean {
@@ -199,6 +224,7 @@ export function CreateWindow(title: string, width: number, height: number, x: nu
     w.style.overflow = 'scroll';
     w.style.border = '2px outset #cacaca';
     w.style.overflow = 'hidden';
+    w.style.zIndex = (++highestZIndex).toString();
     var t = document.createElement('div');
     t.style.height = '15px';
     var tc = document.createElement('span');
@@ -246,27 +272,36 @@ export function CreateWindow(title: string, width: number, height: number, x: nu
             });
             UpdateWindow(wnd, hWnd, false, false);
         }, 10),
-        wndproc: async () => {}
+        wndproc: async () => {},
+        hWnd: 0,
+        active: true
     };
+
+    wnds.push(wnd);
 
     let relativeDragPos = [0, 0];
 
     var hWnd = keCreateHandle(wnd);
+    wnd.hWnd = hWnd;
 
     UpdateWindow(wnd, hWnd);
+    reorder(wnd);
 
     t.addEventListener('mousedown', function(evt) {
         relativeDragPos = [evt.pageX - wnd.x, evt.pageY - wnd.y];
         moveWnd = true;
+        reorder(wnd);
     });
 
     w.addEventListener('mouseup', function() {
         moveWnd = false;
+        reorder(wnd);
     });
 
     // UX hack: make window not "sticky"
     w.addEventListener('click', function() {
         moveWnd = false;
+        reorder(wnd);
     });
 
     var clicks = 0;

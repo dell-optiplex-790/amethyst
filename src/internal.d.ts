@@ -34,6 +34,8 @@ declare global {
         windowContentEl: HTMLElement;
         interval: number;
         wndproc: amtWindowEventCB;
+        hWnd: __handle<__window>;
+        active: boolean
     }
 
     interface DriveBinding {
