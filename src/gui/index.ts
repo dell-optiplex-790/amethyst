@@ -81,17 +81,19 @@ function CorrectWindowSize(window: __window, kernel: amtKernel) {
     if(window.mnh && window.h < window.mnh) {
         window.h = window.mnh;
     }
-    if((window.x - kernel.guiEl.offsetLeft + window.w) > kernel.guiEl.offsetWidth) {
-        window.x = (kernel.guiEl.offsetLeft + kernel.guiEl.offsetWidth - window.w);
-    }
-    if(window.x < kernel.guiEl.offsetLeft) {
-        window.x = kernel.guiEl.offsetLeft;
-    }
-    if((window.y - kernel.guiEl.offsetTop + window.h) > kernel.guiEl.offsetHeight) {
-        window.y = (kernel.guiEl.offsetTop + kernel.guiEl.offsetHeight - window.h);
-    }
-    if(window.y < kernel.guiEl.offsetTop) {
-        window.y = kernel.guiEl.offsetTop;
+    if(kernel.guiEl.parentElement != document.body) {
+        if((window.x - kernel.guiEl.offsetLeft + window.w) > kernel.guiEl.offsetWidth) {
+            window.x = (kernel.guiEl.offsetLeft + kernel.guiEl.offsetWidth - window.w);
+        }
+        if(window.x < kernel.guiEl.offsetLeft) {
+            window.x = kernel.guiEl.offsetLeft;
+        }
+        if((window.y - kernel.guiEl.offsetTop + window.h) > kernel.guiEl.offsetHeight) {
+            window.y = (kernel.guiEl.offsetTop + kernel.guiEl.offsetHeight - window.h);
+        }
+        if(window.y < kernel.guiEl.offsetTop) {
+            window.y = kernel.guiEl.offsetTop;
+        }
     }
 }
 
@@ -154,10 +156,10 @@ function UpdateWindow(kernel: amtKernel, window: __window, hWnd: __handle<__wind
         window.el.style.left = window.x + 'px';
         window.el.style.resize = window.style.resizable ? 'both' : 'none';
     } else if(window.state == 'maximized') {
-        window.el.style.width = '100vw';
-        window.el.style.height = '100vh';
-        window.el.style.top = '0';
-        window.el.style.left = '0';
+        window.el.style.width = kernel.guiEl.parentElement == document.body ? '100vw' : (kernel.guiEl.parentElement?.offsetWidth + 'px');
+        window.el.style.height = kernel.guiEl.parentElement == document.body ? '100vh' : (kernel.guiEl.parentElement?.offsetHeight + 'px');
+        window.el.style.top = kernel.guiEl.parentElement == document.body ? '0' : (kernel.guiEl.parentElement?.offsetTop + 'px');
+        window.el.style.left = kernel.guiEl.parentElement == document.body ? '0' : (kernel.guiEl.parentElement?.offsetLeft + 'px');
         window.el.style.resize = 'none';
     }
     if(!updated) {
