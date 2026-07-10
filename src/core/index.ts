@@ -1,31 +1,18 @@
-import { restricted } from "./secure";
-import { CreateProcess, CreateContext, kePrivilegedGetProcesses, keResolveHandle, keFreeHandle, kePrivilegedGetHandles } from "./process";
+import { _CreateProcess, _CreateContext, _kePrivilegedGetProcesses, _keCreateHandle, _keResolveHandle, _keFreeHandle, _kePrivilegedGetHandles } from "./process";
 import { init, getTTY } from "../textmode/index";
-import { TerminalHandle } from "../textmode/types";
+import { EmbeddableTerminalHandle, TerminalHandle } from "../textmode/types";
 import { gui_init } from "../gui/index";
 import { ramfs } from "../ramfs";
-import { bindings, driveTypes, readDir, readFile, writeFile } from "./filesystem";
+import { bindings, driveTypes } from "./filesystem";
 import { Uint8 } from "./utils";
 import { Sentinel } from "./sentinel";
 
-restricted.document.documentElement.innerHTML = '';
-const { tHandle: tID } = init(document.body);
-var tty = getTTY(tID);
-if(!tty) {
-    throw new Error('TTY not found!');
+declare const cfg: Record<string, any>;
+if(!cfg.embeddable) {
+    document.documentElement.innerHTML = '';
 }
-Sentinel.register(tty.internal.handle);
 export let config: Record<string, any> = {};
 var date = 0;
-
-var status: {running: boolean, error: amtErrorCode | null} = {
-    running: false,
-    error: null
-};
-
-export function getStatus() {
-    return status;
-}
 
 export const amtErrorDictionary: amtErrorDictionary = {
     [-0x21000000]: 'GENERAL_SYSTEM_FAULT',
@@ -40,9 +27,13 @@ export const amtErrorDictionary: amtErrorDictionary = {
 
 var crashCBs: Array<(error: amtErrorCode) => void> = [];
 
-export function _amtTerminateSystem(keUserIdentifier: number, keProcessHandle: number) {
+export function _amtTerminateSystem(kernel: amtKernel, keUserIdentifier: number, keProcessHandle: number) {
+    var kePrivilegedGetProcesses = _kePrivilegedGetProcesses(kernel);
+    var keResolveHandle = _keResolveHandle(kernel);
+    var keFreeHandle = _keFreeHandle(kernel);
+    var kePrivilegedGetHandles = _kePrivilegedGetHandles(kernel);
     return function amtTerminateSystem(errorCode: amtErrorCode) {
-        const tHandle = getTTY(tID);
+        const tHandle = kernel.tty;
         if(!tHandle) {
             // fallback
             throw errorCode;
@@ -50,8 +41,8 @@ export function _amtTerminateSystem(keUserIdentifier: number, keProcessHandle: n
         if(keUserIdentifier != 0) {
             return -0x21400000;
         }
-        status.running = false;
-        status.error = errorCode;
+        kernel.running = false;
+        kernel.error = errorCode;
         for(var i = 0; i < crashCBs.length; i++) {
             crashCBs[i](errorCode);
         }
@@ -90,100 +81,146 @@ export function getFlags(): Record<string, any> {
     return config;
 }
 
-export function log(tHandle: TerminalHandle | null, msg: string) {
+export function log(tHandle: TerminalHandle | EmbeddableTerminalHandle | null, msg: string) {
     if(tHandle == null) {
         return;
     }
     tHandle.write('[' + (Math.floor(((Date.now() - date) / (60 * 1000)) * 10000) / 10000) + '] ' + msg + '\n');
 }
 
-export function kernel_init(cmdLine: string) {
-    status.running = true;
-    date = Date.now();
-    var split = cmdLine.split(' '), tmp: {value: any} = {value: ''};
-    for(var i = 0; i < split.length; i++) {
-        tmp.value = split[i].split('=')[1] || '';
-        if(tmp.value == '') {
-            tmp.value = true;
-        }
-        config[split[i].split('=')[0].slice(1)] = tmp.value;
-    }
-    const tHandle = getTTY(tID);
-    if(!tHandle) {
-        // fallback
-        throw -0x21500000;
-    }
-    tHandle.setBackground(typeof config.bkcolor == 'string' ? config.bkcolor : '#171A4B' /* modern: '#172E63' */ );
-    if(config.startmsg == true || typeof config.startmsg == 'undefined') {
-        tHandle.write('Project Amethyst v1.00\n\n');
-    } else if(typeof config.startmsg == 'string' && config.startmsg != '0') {
-        try {
-            tHandle.write(atob(config.startmsg) + '\n\n');
-        } catch(e) {
+function _kernel_init(kernel: amtKernel) {
+    return function kernel_init(cmdLine: string | Record<string, any>): Promise<amtErrorCode> {
+        return new Promise((resolve, reject) => {
+            kernel.running = true;
+            date = Date.now();
+            if(typeof cmdLine == 'string') {
+                var split = cmdLine.split(' '), tmp: {value: any} = {value: ''};
+                for(var i = 0; i < split.length; i++) {
+                    tmp.value = split[i].split('=')[1] || '';
+                    if(tmp.value == '') {
+                        tmp.value = true;
+                    }
+                    config[split[i].split('=')[0].slice(1)] = tmp.value;
+                }
+            } else {
+                config = cmdLine;
+            }
+    
+            const tHandle = kernel.tty;
+            if(!tHandle) {
+                // fallback
+                return reject(-0x21500000);
+            }
+            tHandle.setBackground(typeof config.bkcolor == 'string' ? config.bkcolor : '#171A4B' /* modern: '#172E63' */ );
+            if(config.startmsg == true || typeof config.startmsg == 'undefined') {
+                tHandle.write('Project Amethyst v1.00\n\n');
+            } else if(typeof config.startmsg == 'string' && config.startmsg != '0') {
+                try {
+                    tHandle.write(atob(config.startmsg) + '\n\n');
+                } catch(e) {
+                    if(config.kdbg) {
+                        console.log('[kdbg] bootargs =', config);
+                        log(tHandle, 'bootargs = ' + JSON.stringify(config));
+                        console.log('[kdbg] error =', e);
+                        log(tHandle, 'error = ' + e);
+                        console.log('[kdbg] oops! terminating system...');
+                        log(tHandle, 'oops! terminating system...');
+                    }
+                    _amtTerminateSystem(kernel, 0, -1)(-0x21500000);
+                    return reject(-0x21500000);
+                }
+            }
+            
             if(config.kdbg) {
                 console.log('[kdbg] bootargs =', config);
                 log(tHandle, 'bootargs = ' + JSON.stringify(config));
-                console.log('[kdbg] error =', e);
-                log(tHandle, 'error = ' + e);
-                console.log('[kdbg] oops! terminating system...');
-                log(tHandle, 'oops! terminating system...');
-            }
-            throw _amtTerminateSystem(0, -1)(-0x21500000);
-        }
-    }
-    
-    if(config.kdbg) {
-        console.log('[kdbg] bootargs =', config);
-        log(tHandle, 'bootargs = ' + JSON.stringify(config));
-        console.log('[kdbg] starting sentinel');
-        log(tHandle, 'starting sentinel');
-    }
-
-    Sentinel.init().then(function() {
-        if(config.kdbg) {
-            console.log('[kdbg] sentinel started');
-            log(tHandle, 'sentinel started');
-        }
-    });
-    
-
-    if(config.break) {
-        if(config.kdbg) {
-            console.log('[kdbg] break initiated, terminating system...');
-            log(tHandle, 'break initiated, terminating system...');
-        }
-        throw _amtTerminateSystem(0, -1)(<amtErrorCode>(typeof config.break == 'string' ? parseInt(config.break, 16) : -0x21500000));
-    }
-
-    CreateProcess('init', async (ctx) => {
-        try {
-            Object.defineProperty(window, 'ctx', { value: ctx, configurable: true });
-            if(config.kdbg) {
-                console.log('[kdbg] mounting initramfs');
-                log(tHandle, 'mounting initramfs');
-            }
-            var ramKeys = Object.keys(ramfs);
-            bindings.ramfs = driveTypes.ram('ramfs');
-            for(var i = 0; i < ramKeys.length; i++) {
-                await writeFile('/ramfs/' + ramKeys[i], new Blob([Uint8(ramfs[ramKeys[i]])]));
-            }
-
-            if(config.kdbg) {
-                console.log('[kdbg] done, running init...');
-                log(tHandle, 'done, running init...');
-            }
-            var file = await readFile('/ramfs/' + ctx.buildConfig.ramfsInitJS);
-            if(typeof file == 'number') {
-                if(config.kdbg) {
-                    console.log('[kdbg] oops! could not read file, terminating system...');
-                    log(tHandle, 'oops! could not read file, terminating system...');
+                if(!cfg.embeddable) {
+                    console.log('[kdbg] starting sentinel');
+                    log(tHandle, 'starting sentinel');
                 }
-                return (_amtTerminateSystem(0, 0))(file);
             }
-            restricted.eval(await file.text())(ctx, {tHandle, gui_init, log, bindings});
-        } catch(e) {
-            console.error(e);
-            (_amtTerminateSystem(0, 0))(-0x21500000);
-        }
-    }, 0);
+        
+            if(!cfg.embeddable) {
+                Sentinel.init(kernel).then(function() {
+                    if(config.kdbg) {
+                        console.log('[kdbg] sentinel started');
+                        log(tHandle, 'sentinel started');
+                    }
+                });
+            }
+        
+            if(config.break) {
+                if(config.kdbg) {
+                    console.log('[kdbg] break initiated, terminating system...');
+                    log(tHandle, 'break initiated, terminating system...');
+                }
+                _amtTerminateSystem(kernel, 0, -1)(<amtErrorCode>(typeof config.break == 'string' ? parseInt(config.break, 16) : -0x21500000));
+                return reject(typeof config.break == 'string' ? parseInt(config.break, 16) : -0x21500000);
+            }
+        
+            _CreateProcess(kernel)('init', async (ctx) => {
+                try {
+                    if(config.kdbg) {
+                        console.log('[kdbg] mounting initramfs');
+                        log(tHandle, 'mounting initramfs');
+                    }
+                    var ramKeys = Object.keys(ramfs);
+                    bindings.ramfs = driveTypes.ram('ramfs');
+                    for(var i = 0; i < ramKeys.length; i++) {
+                        await ctx.writeFile('/ramfs/' + ramKeys[i], new Blob([Uint8(ramfs[ramKeys[i]])]));
+                    }
+        
+                    if(config.kdbg) {
+                        console.log('[kdbg] done, running init...');
+                        log(tHandle, 'done, running init...');
+                    }
+                    var file = await ctx.readFile('/ramfs/' + ctx.buildConfig.ramfsInitJS);
+                    if(typeof file == 'number') {
+                        if(config.kdbg) {
+                            console.log('[kdbg] oops! could not read file, terminating system...');
+                            log(tHandle, 'oops! could not read file, terminating system...');
+                        }
+                        (_amtTerminateSystem(kernel, 0, 0))(file);
+                        return reject(file);
+                    }
+                    eval(await file.text())(ctx, {tHandle, gui_init, log, bindings});
+                    resolve(-0x10000000);
+                } catch(e) {
+                    console.error(e);
+                    (_amtTerminateSystem(kernel, 0, 0))(-0x21500000);
+                    reject(-0x21500000);
+                }
+            }, 0);
+        });
+    }
+}
+
+export function amtCreateKernel() {
+    var kernel: amtKernel = {
+        running: false,
+        init: (cmdLine: string | Record<string, any>) => new Promise(resolve => resolve(-0x10000000)),
+        error: null,
+        state: {
+            processes: [],
+            latestPID: 0,
+            latestHandle: 0,
+            handles: {},
+            highestZIndex: 0,
+            wnds: [],
+            tHandle: init(document.body).tHandle
+        },
+        tty: null
+    };
+    kernel.tty = getTTY(kernel.state.tHandle);
+    if(!kernel.tty) {
+        throw new Error('TTY not found!');
+    }
+    if(!cfg.embeddable && kernel.tty instanceof TerminalHandle) {
+        Sentinel.register(kernel.tty.internal.handle);
+    }
+    kernel.state.root = _keCreateHandle(kernel)({
+        uid: 0
+    });
+    kernel.init = _kernel_init(kernel);
+    return kernel;
 }

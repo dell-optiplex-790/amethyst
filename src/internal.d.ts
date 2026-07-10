@@ -46,4 +46,10 @@ declare global {
         mount: string;
     }
 
+    interface TTYHookEvent {
+        type: 'write' | 'clear' | 'update',
+        data: string;
+        updateData: string;
+    }
+
 } export {}

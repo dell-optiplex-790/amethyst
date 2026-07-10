@@ -1,3 +1,5 @@
+import { EmbeddableTerminalHandle, TerminalHandle } from "c:/Users/User/Downloads/js-kernel/src/textmode/types";
+
 declare global {
 
     type amtContext = {
@@ -71,4 +73,22 @@ declare global {
     type amtWindowEventCB = (evt: amtWindowEvent) => Promise<void>;
     type amtFilesystemType = "none" | "dir" | "file";
 
+
+    // embeddable kernel
+    interface amtKernel {
+        running: boolean;
+        init: (cmdLine: string | Record<string, any>) => Promise<amtErrorCode>
+        error: amtErrorCode | null;
+        state: {
+            processes: Array<Process>;
+            latestPID: number;
+            latestHandle: number;
+            handles: Record<number, any>;
+            root?: __handle<__user>;
+            wnds: Array<__window>; 
+            highestZIndex: number;
+            tHandle: number;
+        },
+        tty: TerminalHandle | EmbeddableTerminalHandle | null;
+    }
 }export {};

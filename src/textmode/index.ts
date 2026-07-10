@@ -1,10 +1,17 @@
-import { TerminalHandle } from './types';
-import { restricted } from "../core/secure";
+import { EmbeddableTerminalHandle, TerminalHandle } from './types';
 
-let tty: Record<number, TerminalHandle> = {};
+let tty: Record<number, TerminalHandle | EmbeddableTerminalHandle> = {};
 let idx = 0;
+declare const cfg: Record<string, any>;
 
-function init(tParentDiv?: HTMLElement): {tHandle: number, tParentDiv: HTMLElement} {
+function init(tParentDiv?: HTMLElement): {tHandle: number, tParentDiv?: HTMLElement} {
+    if(cfg.embeddable) {
+        const tHandle: EmbeddableTerminalHandle = new EmbeddableTerminalHandle();
+
+        tty[idx++] = tHandle;
+    
+        return {tHandle: idx - 1};
+    }
     // define
     const tElmntParentHandle: HTMLElement = tParentDiv ?? document.createElement('div');
     const tElmntHandle: HTMLTextAreaElement = document.createElement('textarea');
@@ -26,13 +33,13 @@ function init(tParentDiv?: HTMLElement): {tHandle: number, tParentDiv: HTMLEleme
 
 
     // do some of *that* stuff
-    restricted.document.body.style.margin = '0';
-    restricted.document.body.style.overflow = 'hidden';
-    restricted.document.body.style.height = '100vh';
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
+    document.body.style.height = '100vh';
 
     // do stuff
     if(!tParentDiv) {
-        restricted.document.body.appendChild(tElmntParentHandle);
+        document.body.appendChild(tElmntParentHandle);
     }
     tElmntParentHandle.appendChild(tElmntHandle);
 
@@ -43,7 +50,7 @@ function init(tParentDiv?: HTMLElement): {tHandle: number, tParentDiv: HTMLEleme
     return {tHandle: idx - 1, tParentDiv: tElmntParentHandle};
 } 
 
-function getTTY(id: number): TerminalHandle | null {
+function getTTY(id: number): TerminalHandle | EmbeddableTerminalHandle | null {
     if(!tty[id]) {
         return null;
     } else {

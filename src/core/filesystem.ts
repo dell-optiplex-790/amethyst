@@ -1,5 +1,4 @@
-import { getFlags, getStatus } from "./index";
-import { restricted } from "./secure";
+import { getFlags } from "./index";
 import { blobToUint8, Uint8, Uint8Str } from "./utils";
 
 export let bindings: Record<string, DriveBinding> = {};
@@ -43,24 +42,24 @@ function LocalStorageDrive(mount: string) {
     const lsdrv: DriveBinding = {
         mount: mount,
         readDir: async function(path: string) {
-            return Object.keys(restricted.localStorage).filter(k => {
+            return Object.keys(localStorage).filter(k => {
                 return k.startsWith(path == '' ? path : (path + '/')) && k.split('/').length == path.split('/').length
             });
         },
         readFile: async function(path: string) {
-            if(typeof restricted.localStorage.getItem(path) == 'string') {
-                return Uint8(restricted.localStorage.getItem(path) || '');
+            if(typeof localStorage.getItem(path) == 'string') {
+                return Uint8(localStorage.getItem(path) || '');
             } else {
                 return -0x21700000;
             }
         },
         writeFile: async function(path: string, content: Uint8Array) {
-            restricted.localStorage.setItem(path, Uint8Str(content));
+            localStorage.setItem(path, Uint8Str(content));
             return -0x10000000;
         },
         remove: async function(path: string) {
-            if(typeof restricted.localStorage.getItem(path) == 'string') {
-                restricted.localStorage.removeItem(path);
+            if(typeof localStorage.getItem(path) == 'string') {
+                localStorage.removeItem(path);
                 return -0x10000000;
             } else {
                 return -0x21700000;
@@ -83,116 +82,123 @@ function getDrivePath(path: string) {
     return path.split('/').slice(2).join('/');
 }
 
-export async function readFile(path: string): Promise<amtErrorCode | Blob> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
+export function _readFile(kernel: amtKernel) {
+    return async function readFile(path: string): Promise<amtErrorCode | Blob> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] read file: %s', path);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return -0x21700000;
+        }
+        var res = await bindings[drive].readFile(getDrivePath(path));
+        if(typeof res == 'number') {
+            return res;
+        }
+        return new Blob([res]);
     }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] read file: %s', path);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
-        return -0x21700000;
-    }
-    var res = await bindings[drive].readFile(getDrivePath(path));
-    if(typeof res == 'number') {
-        return res;
-    }
-    return new Blob([res]);
 }
 
-export async function writeFile(path: string, content: Blob): Promise<amtErrorCode> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
+export function _writeFile(kernel: amtKernel) {
+    return async function writeFile(path: string, content: Blob): Promise<amtErrorCode> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] write file: %s', path);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return -0x21700000;
+        }
+        return await bindings[drive].writeFile(getDrivePath(path), await blobToUint8(content));
     }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] write file: %s', path);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
-        return -0x21700000;
-    }
-    return await bindings[drive].writeFile(getDrivePath(path), await blobToUint8(content));
 }
 
-export async function readDir(path: string): Promise<amtErrorCode | string[]> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
+export function _readDir(kernel: amtKernel) {
+    return async function readDir(path: string): Promise<amtErrorCode | string[]> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] read dir: %s', path);
+        }
+        if(path == '/') {
+            return Object.keys(bindings);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return -0x21700000;
+        }
+        return await bindings[drive].readDir(getDrivePath(path)).then(_ => _ instanceof Array ? (_.filter(itm => !itm.endsWith('/.directory'))) : _);
     }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] read dir: %s', path);
-    }
-    if(path == '/') {
-        return Object.keys(bindings);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
-        return -0x21700000;
-    }
-    return await bindings[drive].readDir(getDrivePath(path)).then(_ => _ instanceof Array ? (_.filter(itm => !itm.endsWith('/.directory'))) : _);
 }
 
-export async function remove(path: string): Promise<amtErrorCode> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
+export function _remove(kernel: amtKernel) {
+    return async function remove(path: string): Promise<amtErrorCode> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] delete file: %s', path);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return -0x21700000;
+        }
+        return await bindings[drive].remove(getDrivePath(path));
     }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] delete file: %s', path);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
-        return -0x21700000;
-    }
-    return await bindings[drive].remove(getDrivePath(path));
 }
 
-export async function mkdir(path: string): Promise<amtErrorCode> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
+export function _mkdir(kernel: amtKernel) {
+    var type = _type(kernel);
+    return async function mkdir(path: string): Promise<amtErrorCode> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] mkdir: %s', path);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return -0x21700000;
+        }
+        if((await type(path)) != 'none') {
+            return -0x21400000; // you cannot overwrite a file or a directory
+        }
+        return await bindings[drive].writeFile(getDrivePath(path) + '/.directory', new Uint8Array([]));
     }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] mkdir: %s', path);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
-        return -0x21700000;
-    }
-    if((await type(path)) != 'none') {
-        return -0x21400000; // you cannot overwrite a file or a directory
-    }
-    return await bindings[drive].writeFile(getDrivePath(path) + '/.directory', new Uint8Array([]));
 }
 
-export async function type(path: string): Promise<amtFilesystemType> {
-    var status = getStatus();
-    if(!status.running) {
-        throw new Error('System is not running!');
-    }
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] typeof: %s', path);
-    }
-    var drive = getDrive(path);
-    if(!bindings[drive]) {
+export function _type(kernel: amtKernel) {
+    return async function type(path: string): Promise<amtFilesystemType> {
+        if(!kernel.running) {
+            throw new Error('System is not running!');
+        }
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] typeof: %s', path);
+        }
+        var drive = getDrive(path);
+        if(!bindings[drive]) {
+            return 'none';
+        }
+        var res = await bindings[drive].readFile(getDrivePath(path) + '/.directory');
+        var res2 = await bindings[drive].readFile(getDrivePath(path));
+        if(res instanceof Uint8Array || getDrivePath(path) == '') {
+            return 'dir';
+        }
+        if(res2 instanceof Uint8Array) {
+            return 'file';
+        }
         return 'none';
     }
-    var res = await bindings[drive].readFile(getDrivePath(path) + '/.directory');
-    var res2 = await bindings[drive].readFile(getDrivePath(path));
-    if(res instanceof Uint8Array || getDrivePath(path) == '') {
-        return 'dir';
-    }
-    if(res2 instanceof Uint8Array) {
-        return 'file';
-    }
-    return 'none';
 }

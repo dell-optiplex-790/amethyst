@@ -20,7 +20,7 @@ export const Sentinel = {
             return true;
         }
     },
-    init: async function() {
+    init: async function(kernel: amtKernel) {
         if(typeof window == 'undefined' && typeof document == 'undefined') {
             return;
         }
@@ -37,7 +37,7 @@ export const Sentinel = {
                 return;
             }
             clearInterval(interval);
-            _amtTerminateSystem(0, 0)(-0x21460000);
+            _amtTerminateSystem(kernel, 0, 0)(-0x21460000);
         }, 500);
     }
 }
