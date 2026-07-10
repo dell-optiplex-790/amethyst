@@ -44,7 +44,7 @@ Old apps should work in newer versions of Amethyst, as the executable format won
  * `hProcess`: `number` - Your PID (in a library: the process you're attached to)
  * `getBinarySection`: `(name: string) => null | Uint8Array` - Get a section from your binary
  * `exportFunc`: `(name: string, func: Function) => boolean` - Export function (will only succeed if you're a library)
- * `loadLibrary`: `(keProcessFunction: ((context: amtContext) => void) /* proc function */ | string /* proc function */ | Uint8Array /* binary */) => null` - Load a library into your context
+ * `loadLibrary`: `(keProcessFunction: ((context: amtContext) => void) /* proc function */ | string /* proc function */ | Uint8Array /* binary */) => Promise<null>` - Load a library into your context
 
 `amtWindowStyle`:
  * `closeBtn`: `boolean` - Display close button?

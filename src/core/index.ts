@@ -174,17 +174,31 @@ function _kernel_init(kernel: amtKernel) {
                         console.log('[kdbg] done, running init...');
                         log(tHandle, 'done, running init...');
                     }
-                    var file = await ctx.readFile('/ramfs/' + ctx.buildConfig.ramfsInitJS);
-                    if(typeof file == 'number') {
-                        if(config.kdbg) {
-                            console.log('[kdbg] oops! could not read file, terminating system...');
-                            log(tHandle, 'oops! could not read file, terminating system...');
+                    var res;
+                    if(typeof config.init == 'function') {
+                        res = config.init(ctx, {tHandle, gui_init, log, bindings});
+                    } else {
+                        var file = await ctx.readFile('/ramfs/' + ctx.buildConfig.ramfsInitJS);
+                        if(typeof file == 'number') {
+                            if(config.kdbg) {
+                                console.log('[kdbg] oops! could not read file, terminating system...');
+                                log(tHandle, 'oops! could not read file, terminating system...');
+                            }
+                            (_amtTerminateSystem(kernel, 0, 0))(file);
+                            return reject(file);
                         }
-                        (_amtTerminateSystem(kernel, 0, 0))(file);
-                        return reject(file);
+                        res = eval(await file.text())(ctx, {tHandle, gui_init, log, bindings});
                     }
-                    eval(await file.text())(ctx, {tHandle, gui_init, log, bindings});
-                    resolve(-0x10000000);
+
+                    if(res instanceof Promise) {
+                        res.then(() => resolve(-0x10000000)).catch((e) => {
+                            console.error(e);
+                            (_amtTerminateSystem(kernel, 0, 0))(-0x21500000);
+                            reject(-0x21500000);
+                        });
+                    } else {
+                        resolve(-0x10000000);
+                    }
                 } catch(e) {
                     console.error(e);
                     (_amtTerminateSystem(kernel, 0, 0))(-0x21500000);

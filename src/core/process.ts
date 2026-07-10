@@ -94,7 +94,7 @@ export function _CreateContext(kernel: amtKernel) {
                 exportCtx[name] = func;
                 return true;
             },
-            loadLibrary: function(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
+            loadLibrary: async function(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
                 return null;
             }
         };
@@ -168,48 +168,63 @@ export function _CreateProcess(kernel: amtKernel) {
 export function _LoadLibrary(kernel: amtKernel, _ctx: amtContext, keUserHandle: number, keProcessHandle: number) {
     var keResolveHandle = _keResolveHandle(kernel);
     var CreateContext = _CreateContext(kernel);
-    return function LoadLibrary(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
-        var config = getFlags();
-        if(config.kdbg) {
-            console.log('[kdbg] try load library');
-        }
-        var user = keResolveHandle(keUserHandle);
-        if(!user) {
-            return null;
-        }
-        
-        if(typeof user.uid != 'number') {
-            return null;
-        }
-        var ctx: amtContext;
-        var bin: Record<string, Uint8Array> | null, text: string = '';
-        if(keProcessFunction instanceof Uint8Array) {
-            bin = loadbin(keProcessFunction);
-            if(!bin) {
+    return function LoadLibrary(keProcessFunction: ((context: amtContext) => any) | string | Uint8Array): Promise<null> {
+        return new Promise((resolve, reject) => {
+            var config = getFlags();
+            if(config.kdbg) {
+                console.log('[kdbg] try load library');
+            }
+            var user = keResolveHandle(keUserHandle);
+            if(!user) {
                 return null;
             }
-            if(!bin.text) {
+            
+            if(typeof user.uid != 'number') {
                 return null;
             }
-            ctx = CreateContext(keUserHandle, keProcessHandle, bin, _ctx);
-            text = stringify(bin.text)
-        } else {
-            ctx = CreateContext(keUserHandle, keProcessHandle, null, _ctx);
-        }
-        setTimeout(async function() {
-            if(typeof keProcessFunction == 'string') {
-                eval(keProcessFunction)(ctx);
-            } else if(typeof keProcessFunction == 'function') {
-                keProcessFunction(ctx);
-            } else if(keProcessFunction instanceof Uint8Array) {
-                if(bin && text) {
-                    eval(text)(ctx);
-                } else {
+            var ctx: amtContext;
+            var bin: Record<string, Uint8Array> | null, text: string = '';
+            if(keProcessFunction instanceof Uint8Array) {
+                bin = loadbin(keProcessFunction);
+                if(!bin) {
                     return null;
                 }
+                if(!bin.text) {
+                    return null;
+                }
+                ctx = CreateContext(keUserHandle, keProcessHandle, bin, _ctx);
+                text = stringify(bin.text);
+                if(bin && text) {
+                    var res = eval(text)(ctx);
+                    if(res instanceof Promise) {
+                        res.then(() => {
+                            resolve(null);
+                        }).catch(reject);
+                    } else {
+                        resolve(null);
+                    }
+                } else {
+                    reject();
+                }
+            } else {
+                ctx = CreateContext(keUserHandle, keProcessHandle, null, _ctx);
+                var res;
+                if(typeof keProcessFunction == 'string') {
+                    res = eval(keProcessFunction)(ctx);
+                } else if(typeof keProcessFunction == 'function') {
+                    res = keProcessFunction(ctx);
+                } else {
+                    reject();
+                }
+                if(res instanceof Promise) {
+                    res.then(() => {
+                        resolve(null);
+                    }).catch(reject);
+                } else {
+                    resolve(null);
+                }
             }
-        }, 0);
-        return null;
+        });
     }
 }
 
