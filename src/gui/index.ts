@@ -68,7 +68,7 @@ export function _SetWindowState(kernel: amtKernel) {
     }
 }
 
-function CorrectWindowSize(window: __window) {
+function CorrectWindowSize(window: __window, kernel: amtKernel) {
     if(window.mxw && window.w > window.mxw) {
         window.w = window.mxw;
     }
@@ -81,10 +81,22 @@ function CorrectWindowSize(window: __window) {
     if(window.mnh && window.h < window.mnh) {
         window.h = window.mnh;
     }
+    if((window.x - kernel.guiEl.offsetLeft + window.w) > kernel.guiEl.offsetWidth) {
+        window.x = (kernel.guiEl.offsetLeft + kernel.guiEl.offsetWidth - window.w);
+    }
+    if(window.x < kernel.guiEl.offsetLeft) {
+        window.x = kernel.guiEl.offsetLeft;
+    }
+    if((window.y - kernel.guiEl.offsetTop + window.h) > kernel.guiEl.offsetHeight) {
+        window.y = (kernel.guiEl.offsetTop + kernel.guiEl.offsetHeight - window.h);
+    }
+    if(window.y < kernel.guiEl.offsetTop) {
+        window.y = kernel.guiEl.offsetTop;
+    }
 }
 
 function UpdateWindow(kernel: amtKernel, window: __window, hWnd: __handle<__window>, updated?: boolean, redrawTitle: boolean = true) {
-    CorrectWindowSize(window);
+    CorrectWindowSize(window, kernel);
     var SetWindowState = _SetWindowState(kernel);
     window.el.style.display = window.state == 'hidden' ? 'none' : '';
     window.titleEl.style.cursor = window.state == 'maximized' ? '' : 'move';
@@ -133,7 +145,7 @@ function UpdateWindow(kernel: amtKernel, window: __window, hWnd: __handle<__wind
     if(!['hidden', 'normal'].includes(window.state) && !updated && window.el.style.width.indexOf('px') != -1) {
         window.w = parseInt(window.el.style.width);
         window.h = parseInt(window.el.style.height);
-        CorrectWindowSize(window);
+        CorrectWindowSize(window, kernel);
     }
     if(window.state == 'normal') {
         window.el.style.width = window.w + 'px';
@@ -383,12 +395,14 @@ export function _gui_init(kernel: amtKernel) {
             console.log('[kdbg] init gui');
             log(tHandle, 'init gui');
         }
-        kernel.guiEl.style.width = '100vw';
-        kernel.guiEl.style.height = '100vh';
-        kernel.guiEl.style.position = 'fixed';
-        kernel.guiEl.style.zIndex = '2';
-        kernel.guiEl.style.top = '0';
-        kernel.guiEl.style.left = '0';
+        kernel.guiEl.style.width = parent == document.body ? '100vw' : '100%';
+        kernel.guiEl.style.height = parent == document.body ? '100vh' : '100%';
+        if(parent == document.body) {
+            kernel.guiEl.style.position = 'fixed';
+            kernel.guiEl.style.zIndex = '2';
+            kernel.guiEl.style.top = '0';
+            kernel.guiEl.style.left = '0';
+        }
         kernel.guiEl.style.background = '#4a4a4a';
         if(!cfg.embeddable) {
             Sentinel.register(kernel.guiEl);
