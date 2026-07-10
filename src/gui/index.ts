@@ -1,9 +1,7 @@
 import { getFlags, handleCrash, log } from "../core/index";
 import { _keCreateHandle, _keFreeHandle, _keResolveHandle } from "../core/process";
 import { Sentinel } from "../core/sentinel";
-import { TerminalHandle } from "../textmode/types";
-
-const guiEl = document.createElement('div');
+import { EmbeddableTerminalHandle, TerminalHandle } from "../textmode/types";
 declare const cfg: Record<string, any>;
 
 export function _SetWindowPos(kernel: amtKernel) {
@@ -337,7 +335,7 @@ export function _CreateWindow(kernel: amtKernel) {
 
         w.appendChild(t);
         w.appendChild(wc);
-        guiEl.appendChild(w);
+        kernel.guiEl.appendChild(w);
         UpdateWindow(kernel, wnd, hWnd);
 
         return hWnd;
@@ -365,42 +363,47 @@ export function _SetWindowContent(kernel: amtKernel) {
     }
 }
 
-function toggleGUI(state: boolean, tHandle: TerminalHandle) {
+function toggleGUI(kernel: amtKernel, state: boolean, tHandle: TerminalHandle | EmbeddableTerminalHandle) {
+    if(!(tHandle instanceof TerminalHandle) || cfg.embeddable) {
+        return; // can't hide a terminal if it's not in the dom!
+    }
     if(state) {
-        guiEl.style.display = '';
+        kernel.guiEl.style.display = '';
         tHandle.internal.handle.style.display = 'none';
     } else {
-        guiEl.style.display = 'none';
+        kernel.guiEl.style.display = 'none';
         tHandle.internal.handle.style.display = '';
     }
 }
 
-export function gui_init(tHandle: TerminalHandle) {
-    var config = getFlags();
-    if(config.kdbg) {
-        console.log('[kdbg] init gui');
-        log(tHandle, 'init gui');
-    }
-    guiEl.style.width = '100vw';
-    guiEl.style.height = '100vh';
-    guiEl.style.position = 'fixed';
-    guiEl.style.zIndex = '2';
-    guiEl.style.top = '0';
-    guiEl.style.left = '0';
-    guiEl.style.background = '#4a4a4a';
-    if(!cfg.embeddable) {
-        Sentinel.register(guiEl);
-    }
-    document.body.appendChild(guiEl);
-    toggleGUI(true, tHandle);
-    handleCrash(function() {
-        toggleGUI(false, tHandle);
-        guiEl.remove();
-    });
-    if(config.kdbg) {
-        log(tHandle, 'gui init finished');
-        console.log('[kdbg] gui init finished');
-    } else {
-        tHandle.write('Done!');
+export function _gui_init(kernel: amtKernel) {
+    return function gui_init(tHandle: TerminalHandle, parent?: HTMLElement) {
+        var config = getFlags();
+        if(config.kdbg) {
+            console.log('[kdbg] init gui');
+            log(tHandle, 'init gui');
+        }
+        kernel.guiEl.style.width = '100vw';
+        kernel.guiEl.style.height = '100vh';
+        kernel.guiEl.style.position = 'fixed';
+        kernel.guiEl.style.zIndex = '2';
+        kernel.guiEl.style.top = '0';
+        kernel.guiEl.style.left = '0';
+        kernel.guiEl.style.background = '#4a4a4a';
+        if(!cfg.embeddable) {
+            Sentinel.register(kernel.guiEl);
+        }
+        (parent || document.body).appendChild(kernel.guiEl);
+        toggleGUI(kernel, true, tHandle);
+        handleCrash(function() {
+            toggleGUI(kernel, false, tHandle);
+            kernel.guiEl.remove();
+        });
+        if(config.kdbg) {
+            log(tHandle, 'gui init finished');
+            console.log('[kdbg] gui init finished');
+        } else {
+            tHandle.write('Done!');
+        }
     }
 }

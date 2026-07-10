@@ -90,5 +90,6 @@ declare global {
             tHandle: number;
         },
         tty: TerminalHandle | EmbeddableTerminalHandle | null;
+        guiEl: HTMLDivElement;
     }
 }export {};
