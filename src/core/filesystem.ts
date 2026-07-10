@@ -1,6 +1,6 @@
 import { getFlags, getStatus } from "./index";
 import { restricted } from "./secure";
-import { Uint8, Uint8Str } from "./utils";
+import { blobToUint8, Uint8, Uint8Str } from "./utils";
 
 export let bindings: Record<string, DriveBinding> = {};
 
@@ -116,7 +116,7 @@ export async function writeFile(path: string, content: Blob): Promise<amtErrorCo
     if(!bindings[drive]) {
         return -0x21700000;
     }
-    return await bindings[drive].writeFile(getDrivePath(path), await content.bytes());
+    return await bindings[drive].writeFile(getDrivePath(path), await blobToUint8(content));
 }
 
 export async function readDir(path: string): Promise<amtErrorCode | string[]> {

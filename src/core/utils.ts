@@ -24,3 +24,7 @@ export function stringify(uint8: Uint8Array) {
     }
     return str;
 }
+
+export async function blobToUint8(blob: Blob) {
+    return new Uint8Array(await blob.arrayBuffer())
+}
