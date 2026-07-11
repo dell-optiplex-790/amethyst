@@ -1,4 +1,4 @@
-import { EmbeddableTerminalHandle, TerminalHandle } from "c:/Users/User/Downloads/js-kernel/src/textmode/types";
+import { EmbeddableTerminalHandle, TerminalHandle } from "textmode/types";
 
 declare global {
 
