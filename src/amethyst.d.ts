@@ -1,4 +1,4 @@
-import { EmbeddableTerminalHandle, TerminalHandle } from "textmode/types";
+import { EmbeddableTerminalHandle, TerminalHandle } from "./textmode/types";
 
 declare global {
 
