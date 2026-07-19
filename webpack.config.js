@@ -1,21 +1,24 @@
 const webpack = require('webpack');
 const fs = require('fs');
+const MinimizerPlugin = require('terser-webpack-plugin');
 
 module.exports={entry:'./temp/index.js',mode:'production',target:['web','es2016'],resolve:{extensions:['.js'],fallback:{url:false}},output:{filename:'amethyst.js'},optimization:{concatenateModules:true,mangleExports:'size',minimizer:[
-    new (require('terser-webpack-plugin'))({
+    new MinimizerPlugin({
         terserOptions: {
-            module: false,
+            module: true,
             mangle: {
                 toplevel: true,
-                properties: false,
-                eval: true
+                properties: false
             },
             compress: {
-                toplevel: true,
                 dead_code: true,
                 unused: true,
                 evaluate: true,
-                unsafe: true
+                unsafe: true,
+                toplevel: true,
+                properties: {
+                    regex: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
+                }
             }
         }
     })
