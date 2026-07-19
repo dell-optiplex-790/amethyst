@@ -7,13 +7,10 @@ module.exports={entry:'./temp/index.js',mode:'production',target:['web','es2016'
             module: false,
             mangle: {
                 toplevel: true,
-                properties: false,
+                properties: true,
                 eval: true
             },
             compress: {
-                properties: {
-                    regex: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
-                },
                 toplevel: true,
                 dead_code: true,
                 unused: true,
