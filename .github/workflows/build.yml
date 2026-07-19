@@ -6,8 +6,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
       - name: Set up repo
+      - uses: actions/checkout@v6
       - run: unzip default_initramfs.zip -d .
       - run: cp defaults.json
       - name: Build
