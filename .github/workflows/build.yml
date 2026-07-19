@@ -8,16 +8,24 @@ jobs:
     steps:
       - name: Set up repo
         uses: actions/checkout@v6
-        run: unzip default_initramfs.zip -d .
-        run: cp defaults.json
+        run: |
+          unzip default_initramfs.zip -d .
+          cp defaults.json
       - name: Build
         uses: actions/setup-node@v4
         with:
           node-version: '24.x'
-        run: npm install
-        run: npm run build
+        run: |
+          npm install
+          npm run build
+          echo BUILD=$(cat .osbuild) >> $GITHUB_OUTPUT
+        id: build
 
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*
+          body: New pre-built Amethyst version
+          prerelease: true
+          tag_name: amt-${{ steps.build.outputs.BUILD }}
+          name: Build ${{ steps.build.outputs.BUILD }}
