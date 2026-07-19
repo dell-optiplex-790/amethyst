@@ -6,6 +6,9 @@ module.exports={entry:'./temp/index.js',mode:'production',target:['web','es2016'
     new MinimizerPlugin({
         terserOptions: {
             module: true,
+            mangle: {
+                toplevel: true
+            },
             compress: {
                 dead_code: true,
                 unused: true,
