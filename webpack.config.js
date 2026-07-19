@@ -7,7 +7,7 @@ module.exports={entry:'./temp/index.js',mode:'production',target:['web','es2016'
             module: false,
             mangle: {
                 toplevel: true,
-                properties: true,
+                properties: false,
                 eval: true
             },
             compress: {
