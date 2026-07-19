@@ -7,17 +7,17 @@ jobs:
 
     steps:
       - name: Set up repo
-      - uses: actions/checkout@v6
-      - run: unzip default_initramfs.zip -d .
-      - run: cp defaults.json
+        uses: actions/checkout@v6
+        run: unzip default_initramfs.zip -d .
+        run: cp defaults.json
       - name: Build
         uses: actions/setup-node@v4
         with:
           node-version: '24.x'
-      - run: npm install
-      - run: npm run build
+        run: npm install
+        run: npm run build
 
-      - uses: softprops/action-gh-release@v3
       - name: Release
-      - with:
+        uses: softprops/action-gh-release@v3
+        with:
           files: dist/*
