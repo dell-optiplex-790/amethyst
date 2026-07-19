@@ -29,7 +29,9 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/*
+          files: |
+            dist/*
+            LICENSE.txt
           body: New pre-built Amethyst version
           prerelease: true
           tag_name: amt-${{ steps.build.outputs.BUILD }}
