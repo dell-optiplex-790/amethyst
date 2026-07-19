@@ -22,7 +22,8 @@ optimization: {
                 dead_code: true,
                 unused: true,
                 evaluate: true,
-                unsafe: true
+                unsafe: true,
+                unsafe_proto: true
             },
             mangle: {
                 eval: true
