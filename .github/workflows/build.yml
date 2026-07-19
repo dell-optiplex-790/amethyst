@@ -12,13 +12,13 @@ jobs:
       - name: Set up repo
         run: |
           unzip default_initramfs.zip -d .
-          cp defaults.json
+          cp defaults.json config.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24.x'
-          
+
       - name: Build
         run: |
           npm install
