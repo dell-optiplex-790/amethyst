@@ -2,6 +2,7 @@
 temp
 initramfs
 config.json
+sku.json
 
 # npm shit
 package-lock.json

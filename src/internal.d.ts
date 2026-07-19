@@ -52,4 +52,9 @@ declare global {
         updateData: string;
     }
 
+    interface AmtSKU {
+        name: string;
+        features: Array<string>
+    }
+
 } export {}

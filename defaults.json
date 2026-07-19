@@ -1,4 +1,3 @@
 {
-    "ramfsInitJS": "init.js",
-    "embeddable": false
+    "ramfsInitJS": "init.js"
 }

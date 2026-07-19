@@ -2,10 +2,12 @@ import { EmbeddableTerminalHandle, TerminalHandle } from './types';
 
 let tty: Record<number, TerminalHandle | EmbeddableTerminalHandle> = {};
 let idx = 0;
+
 declare const cfg: Record<string, any>;
+declare const sku: AmtSKU;
 
 function init(tParentDiv?: HTMLElement): {tHandle: number, tParentDiv?: HTMLElement} {
-    if(cfg.embeddable) {
+    if(sku.features.includes('embeddable')) {
         const tHandle: EmbeddableTerminalHandle = new EmbeddableTerminalHandle();
 
         tty[idx++] = tHandle;

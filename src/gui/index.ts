@@ -1,11 +1,18 @@
-import { getFlags, handleCrash, log } from "../core/index";
+import { config, getFlags, handleCrash, log } from "../core/index";
 import { _keCreateHandle, _keFreeHandle, _keResolveHandle } from "../core/process";
 import { Sentinel } from "../core/sentinel";
 import { EmbeddableTerminalHandle, TerminalHandle } from "../textmode/types";
+
+declare const sku: AmtSKU;
 declare const cfg: Record<string, any>;
 
 export function _SetWindowPos(kernel: amtKernel) {
     var keResolveHandle = _keResolveHandle(kernel);
+    if(!sku.features.includes('gui')) {
+        return function SetWindowPos(hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) {
+            return false;
+        }
+    }
     return function SetWindowPos(hWnd: __handle<__window>, width: number | null, height: number | null, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null) {
         if(!kernel.running) {
             throw new Error('System is not running!');
@@ -38,6 +45,11 @@ export function _SetWindowPos(kernel: amtKernel) {
 export function _SetWindowState(kernel: amtKernel) {
     var keResolveHandle = _keResolveHandle(kernel);
     var keFreeHandle = _keFreeHandle(kernel);
+    if(!sku.features.includes('gui')) {
+        return function SetWindowState(hWnd: __handle<__window>, state: amtWindowState) {
+            return false;
+        }
+    }
     return function SetWindowState(hWnd: __handle<__window>, state: amtWindowState) {
         if(!kernel.running) {
             throw new Error('System is not running!');
@@ -188,6 +200,11 @@ function reorder(kernel: amtKernel, wnd: __window) {
 
 export function _SetWindowProc(kernel: amtKernel) {
     var keResolveHandle = _keResolveHandle(kernel);
+    if(!sku.features.includes('gui')) {
+        return function CreateWindow(hWnd: __handle<__window>, proc: amtWindowEventCB): boolean {
+            return false;
+        }
+    }
     return function SetWindowProc(hWnd: __handle<__window>, proc: amtWindowEventCB): boolean {
         var window: __window | null = keResolveHandle(hWnd);
         if(!window) {
@@ -210,6 +227,11 @@ export function _SetWindowProc(kernel: amtKernel) {
 export function _CreateWindow(kernel: amtKernel) {
     var keCreateHandle = _keCreateHandle(kernel);
     var SetWindowPos = _SetWindowPos(kernel);
+    if(!sku.features.includes('gui')) {
+        return function CreateWindow(title: string, width: number, height: number, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null, style: amtWindowStyle | null): __handle<__window> {
+            return 0; // gaslighting
+        }
+    }
     return function CreateWindow(title: string, width: number, height: number, x: number | null, y: number | null, maxWidth: number | null, maxHeight: number | null, minWidth: number | null, minHeight: number | null, style: amtWindowStyle | null): __handle<__window> {
         if(!kernel.running) {
             throw new Error('System is not running!');
@@ -358,6 +380,11 @@ export function _CreateWindow(kernel: amtKernel) {
 
 export function _SetWindowContent(kernel: amtKernel) {
     var keResolveHandle = _keResolveHandle(kernel);
+    if(!sku.features.includes('gui')) {
+        return function SetWindowContent(hWnd: __handle<__window>, content: HTMLElement) {
+            return false;
+        }
+    }
     return function SetWindowContent(hWnd: __handle<__window>, content: HTMLElement) {
         if(!kernel.running) {
             throw new Error('System is not running!');
@@ -378,6 +405,11 @@ export function _SetWindowContent(kernel: amtKernel) {
 }
 
 function toggleGUI(kernel: amtKernel, state: boolean, tHandle: TerminalHandle | EmbeddableTerminalHandle) {
+    if(!sku.features.includes('gui')) {
+        return function gui_init(tHandle: TerminalHandle, parent?: HTMLElement) {
+            return;
+        }
+    }
     if(!(tHandle instanceof TerminalHandle) || cfg.embeddable) {
         return; // can't hide a terminal if it's not in the dom!
     }
@@ -391,6 +423,11 @@ function toggleGUI(kernel: amtKernel, state: boolean, tHandle: TerminalHandle | 
 }
 
 export function _gui_init(kernel: amtKernel) {
+    if(!sku.features.includes('gui')) {
+        return function gui_init(tHandle: TerminalHandle, parent?: HTMLElement) {
+            throw new Error('A graphical interface cannot be initialized on a command-line-only SKU.');
+        }
+    }
     return function gui_init(tHandle: TerminalHandle, parent?: HTMLElement) {
         var config = getFlags();
         if(config.kdbg) {

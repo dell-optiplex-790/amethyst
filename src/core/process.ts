@@ -6,6 +6,7 @@ import { loadbin } from "./binload";
 import { stringify } from "./utils";
 
 declare const cfg: Record<string, any>;
+declare const sku: AmtSKU;
 
 export function _keFreeHandle(kernel: amtKernel) {
     return function keFreeHandle(handle: number): boolean {
@@ -96,7 +97,8 @@ export function _CreateContext(kernel: amtKernel) {
             },
             loadLibrary: async function(keProcessFunction: ((context: amtContext) => void) | string | Uint8Array) {
                 return null;
-            }
+            },
+            sku
         };
         $ctx.loadLibrary = _LoadLibrary(kernel, $ctx, keUserHandle, keProcessHandle);
         return $ctx;

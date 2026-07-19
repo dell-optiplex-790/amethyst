@@ -1,0 +1,6 @@
+{
+    "name": "EmbeddableCore",
+    "features": [
+        "embeddable"
+    ]
+}

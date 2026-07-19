@@ -1,8 +1,9 @@
 import { amtCreateKernel } from "./core/index";
 
+declare const sku: AmtSKU;
 declare const cfg: Record<string, any>;
 
-if(cfg.embeddable) {
+if(sku.features.includes('embeddable')) {
     Object.defineProperty(window, 'amethyst', {
         value: {
             createKernel: amtCreateKernel

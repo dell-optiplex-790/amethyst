@@ -7,8 +7,9 @@ import { bindings, driveTypes } from "./filesystem";
 import { Uint8 } from "./utils";
 import { Sentinel } from "./sentinel";
 
+declare const sku: AmtSKU;
 declare const cfg: Record<string, any>;
-if(!cfg.embeddable) {
+if(!sku.features.includes('embeddable')) {
     document.documentElement.innerHTML = '';
 }
 export let config: Record<string, any> = {};
@@ -133,13 +134,13 @@ function _kernel_init(kernel: amtKernel) {
             if(config.kdbg) {
                 console.log('[kdbg] bootargs =', config);
                 log(kernel.tty, 'bootargs = ' + JSON.stringify(config));
-                if(!cfg.embeddable) {
+                if(!sku.features.includes('embeddable')) {
                     console.log('[kdbg] starting sentinel');
                     log(kernel.tty, 'starting sentinel');
                 }
             }
         
-            if(!cfg.embeddable) {
+            if(!sku.features.includes('embeddable')) {
                 Sentinel.init(kernel).then(function() {
                     if(config.kdbg) {
                         console.log('[kdbg] sentinel started');
@@ -229,7 +230,7 @@ export function amtCreateKernel() {
     if(!kernel.tty) {
         throw new Error('TTY not found!');
     }
-    if(!cfg.embeddable && kernel.tty instanceof TerminalHandle) {
+    if(!sku.features.includes('embeddable') && kernel.tty instanceof TerminalHandle) {
         Sentinel.register(kernel.tty.internal.handle);
     }
     kernel.state.root = _keCreateHandle(kernel)({

@@ -1,13 +1,15 @@
 {
   "devDependencies": {
     "@types/node": "^25.9.3",
-    "terser-webpack-plugin": "^5.6.1",
     "ts-loader": "^9.5.4",
     "typescript": "^6.0.3",
     "webpack": "^5.104.0",
     "webpack-cli": "^6.0.1"
   },
   "scripts": {
-    "build": "npx tsc && node initramfs.js && npx webpack"
+    "build": "npx tsc && node initramfs.js && node build.js"
+  },
+  "dependencies": {
+    "terser-webpack-plugin": "^5.6.1"
   }
 }

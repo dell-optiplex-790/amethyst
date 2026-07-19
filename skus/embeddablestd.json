@@ -1,0 +1,7 @@
+{
+    "name": "EmbeddableStandard",
+    "features": [
+        "gui",
+        "embeddable"
+    ]
+}

@@ -45,13 +45,16 @@ Old apps should work in newer versions of Amethyst, as the executable format won
  * `getBinarySection`: `(name: string) => null | Uint8Array` - Get a section from your binary
  * `exportFunc`: `(name: string, func: Function) => boolean` - Export function (will only succeed if you're a library)
  * `loadLibrary`: `(keProcessFunction: ((context: amtContext) => void) /* proc function */ | string /* proc function */ | Uint8Array /* binary */) => Promise<null>` - Load a library into your context
+ * `sku`: `AmtSKU` - The current kernel SKU, may be used to gate features
 
 `amtWindowStyle`:
  * `closeBtn`: `boolean` - Display close button?
  * `maxBtn`: `boolean` - Display maximize button?
  * `caption`: `boolean` - Show titlebar?
  * `resizable`: `boolean` - Is window resizable?
+
 `amtFilesystemType`: `"none" | "dir" | "file"` - What the filesystem node is (known bug: if you make a file named .dir "inside" of a file, the file will now be a directory and will be unopenable)
+
 `amtWindowEvent`:
  * `hWnd`: `__handle<__window>` - Window handle
  * `w`: `number` - Window width
@@ -60,6 +63,10 @@ Old apps should work in newer versions of Amethyst, as the executable format won
  * `x`: `number` - Window X position
  * `y`: `number` - Window Y position
  * `event`: `amtWindowEventType` - Event type (can be "close" or "move")
+
+`AmtSKU`:
+ * `name`: `string` - The SKU's name (like Standard or EmbeddableCore)
+ * `features`: `Array<string>` - The features that the SKU has (e.g. `["gui", "embeddable"]` will produce an embeddable kernel with GUI support)
 
 ## Error codes
  * `-0x10000000`: SUCCESS - Used by some functions to indicate success, almost never fatal

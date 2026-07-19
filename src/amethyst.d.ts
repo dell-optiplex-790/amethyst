@@ -35,6 +35,7 @@ declare global {
         getBinarySection: (name: string) => null | Uint8Array;
         exportFunc: (name: string, func: Function) => boolean;
         loadLibrary: (keProcessFunction: ((context: amtContext) => any) | string | Uint8Array) => Promise<null>;
+        sku: AmtSKU;
     }
     
     type amtLibraryName = 'core.aml' | string;
